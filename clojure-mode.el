@@ -732,7 +732,7 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
   (eval-when-compile
     `( ;; Top-level variable definition
       (,(concat "(\\(?:clojure.core/\\)?\\("
-                (regexp-opt '("def" "defonce"))
+                (regexp-opt '("def" "defonce" "defconst"))
                 ;; variable declarations
                 "\\)\\>"
                 ;; Any whitespace
@@ -804,11 +804,11 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
          "\\>")
        1 font-lock-keyword-face)
       ;; Macros similar to let, when, and while
-      (,(rx symbol-start
-            (or "let" "when" "while") "-"
-            (1+ (or (syntax word) (syntax symbol)))
-            symbol-end)
-       0 font-lock-keyword-face)
+      ;; (,(rx symbol-start
+      ;;       (or "let" "when" "while") "-"
+      ;;       (1+ (or (syntax word) (syntax symbol)))
+      ;;       symbol-end)
+      ;;  0 font-lock-keyword-face)
       (,(concat
          "\\<"
          (regexp-opt
@@ -834,12 +834,12 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
          (regexp-opt
           '("true" "false" "nil") t)
          "\\>")
-       0 font-lock-constant-face)
+       0 'clojure-number-face)
       ;; Character literals - \1, \a, \newline, \u0000
       ("\\\\\\([[:punct:]]\\|[a-z0-9]+\\>\\)" 0 'clojure-character-face)
       ;; foo/ Foo/ @Foo/ /FooBar
-      (,(concat "\\(?:\\<:?\\|\\.\\)@?\\(" clojure--sym-regexp "\\)\\(/\\)")
-       (1 font-lock-type-face) (2 'default))
+      ;; (,(concat "\\(?:\\<:?\\|\\.\\)@?\\(" clojure--sym-regexp "\\)\\(/\\)")
+      ;;  (1 font-lock-type-face) (2 'default))
       ;; Constant values (keywords), including as metadata e.g. ^:static
       ("\\<^?\\(:\\(\\sw\\|\\s_\\)+\\(\\>\\|\\_>\\)\\)" 1 'clojure-keyword-face append)
       ;; Java interop highlighting
@@ -870,7 +870,9 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
       (clojure-font-lock-escaped-chars 0 'bold prepend)
       ;; Highlight grouping constructs in regular expressions
       (clojure-font-lock-regexp-groups
-       (1 'font-lock-regexp-grouping-construct prepend))))
+       (1 'font-lock-regexp-grouping-construct prepend))
+      ("\\<-?[0-9]+\\(\\.[0-9]+\\)?\\>" 0 'clojure-number-face)
+      ("[~@'`#]" 0 'clojure-pink-face)))
   "Default expressions to highlight in Clojure mode.")
 
 (defun clojure-font-lock-syntactic-face-function (state)
