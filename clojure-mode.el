@@ -914,7 +914,11 @@ highlighted region)."
                              (setq docelt (1- docelt)))))
                        (and (zerop docelt) (<= (point) startpos)
                             (progn (forward-comment (point-max)) t)
-                            (= (point) (nth 8 state)))))
+                            (= (point) (nth 8 state))))
+                     (or (save-excursion
+                           (goto-char startpos)
+                           (not (= ?\) (char-after (+ startpos (length (sexp-at-point)) 2)))))
+                         (string= "defprotocol" firstsym)))
                 font-lock-doc-face
               font-lock-string-face))))
     font-lock-comment-face))
