@@ -785,13 +785,16 @@ definition of 'macros': URL `http://git.io/vRGLD'.")
     (concat "[^" clojure--sym-forbidden-1st-chars "][^" clojure--sym-forbidden-rest-chars "]*")
     "A regexp matching a Clojure symbol or namespace alias.
 Matches the rule `clojure--sym-forbidden-1st-chars' followed by
-any number of matches of `clojure--sym-forbidden-rest-chars'."))
+any number of matches of `clojure--sym-forbidden-rest-chars'.")
+  (defconst clojure--num-regexp
+      "-?[0-9]+\\(\\.[0-9]+\\)?"))
 
 (defconst clojure-font-lock-keywords
   (eval-when-compile
     `( ;; Top-level variable definition
-      (,(concat "(\\(?:clojure.core/\\)?\\("
-                (regexp-opt '("def" "defonce"))
+      ;; (,(concat "(\\(?:" clojure--sym-regexp "/\\)?\\("
+      (,(concat "(\\(\\(?:" clojure--sym-regexp "/\\)?"
+                (regexp-opt '("def" "def-" "defconst" "defonce" "defs"))
                 ;; variable declarations
                 "\\)\\>"
                 ;; Any whitespace
@@ -804,7 +807,7 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
       ;; Type definition
       (,(concat "(\\(?:clojure.core/\\)?\\("
                 (regexp-opt '("defstruct" "deftype" "defprotocol"
-                              "defrecord"))
+                              "defrecord" "deftype-"))
                 ;; type declarations
                 "\\)\\>"
                 ;; Any whitespace
@@ -816,8 +819,8 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
        (2 font-lock-type-face nil t))
       ;; Function definition (anything that starts with def and is not
       ;; listed above)
-      (,(concat "(\\(?:" clojure--sym-regexp "/\\)?"
-                "\\(def[^ \r\n\t]*\\)"
+      (,(concat "(\\(\\(?:" clojure--sym-regexp "/\\)?"
+                "def[^ \r\n\t]*\\)"
                 ;; Function declarations
                 "\\>"
                 ;; Any whitespace
@@ -863,11 +866,11 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
          "\\>")
        1 font-lock-keyword-face)
       ;; Macros similar to let, when, and while
-      (,(rx symbol-start
-            (or "let" "when" "while") "-"
-            (1+ (or (syntax word) (syntax symbol)))
-            symbol-end)
-       0 font-lock-keyword-face)
+      ;; (,(rx symbol-start
+      ;;       (or "let" "when" "while") "-"
+      ;;       (1+ (or (syntax word) (syntax symbol)))
+      ;;       symbol-end)
+      ;;  0 font-lock-keyword-face)
       (,(concat
          "\\<"
          (regexp-opt
@@ -894,7 +897,7 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
          (regexp-opt
           '("true" "false" "nil") t)
          "\\>")
-       0 font-lock-constant-face)
+       0 'clojure-number-face)
       ;; Character literals - \1, \a, \newline, \u0000
       (,(rx "\\" (or any
                     "newline" "space" "tab" "formfeed" "backspace"
@@ -937,16 +940,17 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
 
       ;; clojure symbols not matched by the previous regexps; influences CIDER's
       ;; dynamic syntax highlighting (CDSH). See https://git.io/vxEEA:
-      (,(concat "\\(" clojure--sym-regexp "?\\)\\(/\\)\\(" clojure--sym-regexp "\\)")
-       (1 font-lock-type-face)
-       ;; 2nd and 3th matching groups can be font-locked to `nil' or `default'.
-       ;; CDSH seems to kick in only for functions and variables referenced w/o
-       ;; writing their namespaces.
-       (2 nil)
-       (3 nil))
-      (,(concat "\\(" clojure--sym-regexp "\\)")
-       ;; this matching group must be font-locked to `nil' otherwise CDSH breaks.
-       (1 nil))
+
+      ;; (,(concat "\\(" clojure--sym-regexp "?\\)\\(/\\)\\(" clojure--sym-regexp "\\)")
+      ;;  (1 font-lock-type-face)
+      ;;  ;; 2nd and 3th matching groups can be font-locked to `nil' or `default'.
+      ;;  ;; CDSH seems to kick in only for functions and variables referenced w/o
+      ;;  ;; writing their namespaces.
+      ;;  (2 nil)
+      ;;  (3 clojure-pink-face))
+      ;; (,(concat "\\(" clojure--sym-regexp "\\)")
+      ;;  ;; this matching group must be font-locked to `nil' otherwise CDSH breaks.
+      ;;  (1 nil))
 
       ;; #_ and (comment ...) macros.
       (clojure--search-comment-macro 1 font-lock-comment-face t)
@@ -956,13 +960,17 @@ any number of matches of `clojure--sym-forbidden-rest-chars'."))
        (1 'font-lock-constant-face prepend))
       ;; Highlight [[var]] comments
       (,(rx "[[" (group-n 1 (optional "#'")
-                         (+ (or (syntax symbol) (syntax word)))) "]]")
+                          (+ (or (syntax symbol) (syntax word)))) "]]")
        (1 'font-lock-constant-face prepend))
       ;; Highlight escaped characters in strings.
       (clojure-font-lock-escaped-chars 0 'bold prepend)
       ;; Highlight grouping constructs in regular expressions
       (clojure-font-lock-regexp-groups
-       (1 'font-lock-regexp-grouping-construct prepend))))
+       (1 'font-lock-regexp-grouping-construct prepend))
+      ;; ("\\<-?[0-9]+\\(\\.[0-9]+\\)?\\>" 0 'clojure-number-face)
+      (,(concat "\\<" clojure--num-regexp "\\(\\(e\\|E\\)" clojure--num-regexp "\\)?\\>")
+       0 'clojure-number-face)
+      ("[~@'`#]" 0 'clojure-quote-face)))
   "Default expressions to highlight in Clojure mode.")
 
 (defun clojure-font-lock-syntactic-face-function (state)
@@ -1124,10 +1132,13 @@ point) to check."
 ;; Docstring positions
 (put 'ns 'clojure-doc-string-elt 2)
 (put 'def 'clojure-doc-string-elt 2)
+(put 'def- 'clojure-doc-string-elt 2)
 (put 'defn 'clojure-doc-string-elt 2)
 (put 'defn- 'clojure-doc-string-elt 2)
 (put 'defmulti 'clojure-doc-string-elt 2)
 (put 'defmacro 'clojure-doc-string-elt 2)
+(put 'defmacro- 'clojure-doc-string-elt 2)
+(put 'defmacro! 'clojure-doc-string-elt 2)
 (put 'definline 'clojure-doc-string-elt 2)
 (put 'defprotocol 'clojure-doc-string-elt 2)
 (put 'deftask 'clojure-doc-string-elt 2) ;; common Boot macro
