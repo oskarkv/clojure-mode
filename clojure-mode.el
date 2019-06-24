@@ -1325,16 +1325,27 @@ Forms between BEG and END are aligned according to
           (clojure-align beg end)
         (scan-error nil)))))
 
+;; (defun clojure-indent-line ()
+;;   "Indent current line as Clojure code."
+;;   (if (clojure-in-docstring-p)
+;;       (save-excursion
+;;         (beginning-of-line)
+;;         (when (and (looking-at "^\\s-*")
+;;                    (<= (string-width (match-string-no-properties 0))
+;;                        (string-width (clojure-docstring-fill-prefix))))
+;;           (replace-match (clojure-docstring-fill-prefix))))
+;;     (lisp-indent-line)))
+
 (defun clojure-indent-line ()
   "Indent current line as Clojure code."
   (if (clojure-in-docstring-p)
       (save-excursion
-        (beginning-of-line)
-        (when (and (looking-at "^\\s-*")
-                   (<= (string-width (match-string-no-properties 0))
-                       (string-width (clojure-docstring-fill-prefix))))
-          (replace-match (clojure-docstring-fill-prefix))))
-    (lisp-indent-line)))
+        (let ((indent (save-excursion
+                        (progn (search-backward "\"") (1+ (current-column))))))
+          (beginning-of-line)
+          (looking-at "^\\s-*")
+          (replace-match (make-string indent ? )))))
+  (lisp-indent-line))
 
 (defvar clojure-get-indent-function nil
   "Function to get the indent spec of a symbol.
